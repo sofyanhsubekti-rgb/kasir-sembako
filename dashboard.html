@@ -200,11 +200,15 @@ async function muat() {
     const r = await fetch(u);
     const j = await r.json();
     if (!j.ok) throw new Error(j.pesan || "ditolak server");
+    if (!Array.isArray(j.harian)) throw new Error("skrip-lama");
     gambar(j);
     $("#kabar").textContent = "Diperbarui " + j.diperbarui;
   } catch (e) {
     const pesan = /kode rahasia/.test(e.message)
       ? "Kode rahasianya tidak cocok dengan yang di skrip."
+      : e.message === "skrip-lama"
+      ? "Skrip di Apps Script belum diperbarui ke versi yang bisa dibaca dasbor. "
+        + "Buka proyeknya, lalu Terapkan › Kelola deployment › ikon pensil › Versi: Versi baru › Terapkan."
       : "Tidak bisa mengambil data: " + e.message;
     if (!$("#isi").children.length) layarSetel(pesan);
     else {
