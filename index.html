@@ -323,8 +323,8 @@ let S=null;
 
 function kosong(){
   return {
-    settings:{nama:"Kasir Sembako",alamat:"",telp:"",kasir:"Kasir",kertas:"58",footer:"Terima kasih, barang yang sudah dibeli tidak dapat ditukar."},
-    produk:[],sales:[],expenses:[],mutasi:[],shifts:[],
+    settings:{nama:"Kasir Sembako",alamat:"",telp:"",kasir:"Kasir",kertas:"58",sheetUrl:"",sheetKode:"",footer:"Terima kasih, barang yang sudah dibeli tidak dapat ditukar."},
+    produk:[],sales:[],expenses:[],mutasi:[],shifts:[],antrian:[],
     counter:{},meta:{demo:false}
   };
 }
@@ -373,6 +373,68 @@ function hitungPeriode(dari,sampai){
   return {sales,exp,omzet,hpp,labaKotor:omzet-hpp,biaya,labaBersih:omzet-hpp-biaya,nTrx:sales.length,
           rata:sales.length?omzet/sales.length:0,tunai:per("tunai"),transfer:per("transfer"),qris:per("qris"),
           diskon:sales.reduce((a,s)=>a+(s.diskon||0),0)};
+}
+
+/* ============================ kirim ke Google Sheets ============================ */
+/* Catatan diantre dulu, baru dikirim. Kalau jaringan putus antreannya tetap
+   tersimpan dan dicoba lagi nanti. Server menolak ID yang sudah masuk, jadi
+   mengulang kirim tidak pernah bikin data dobel. */
+const BATAS_ANTRIAN = 2000;
+let sedangKirim = false;
+
+function antre(rec){
+  S.antrian.push(rec);
+  if(S.antrian.length > BATAS_ANTRIAN) S.antrian = S.antrian.slice(-BATAS_ANTRIAN);
+  persist();
+  kirimAntrian(true);
+}
+function rekamNota(sale){
+  return {jenis:"nota", id:sale.id, ts:sale.ts, no:sale.no, kasir:sale.kasir,
+    metode:METODE[sale.metode]||sale.metode, total:sale.total, hpp:sale.hpp||0,
+    diskon:sale.diskon||0,
+    item:sale.items.map(i=>i.nama+" x"+qty(i.qty)+" "+i.satuan).join("; ")};
+}
+function rekamBiaya(x){
+  return {jenis:"biaya", id:x.id, ts:x.ts, kategori:x.kategori, ket:x.ket,
+    sumber:x.sumber, nominal:x.nominal};
+}
+function rekamTutup(sh){
+  return {jenis:"tutup", id:sh.id, ts:sh.tutup, no:sh.no, kasir:sh.kasir,
+    kasAwal:sh.kasAwal, tunai:sh.tunai||0, transfer:sh.transfer||0, qris:sh.qris||0,
+    omzet:sh.omzet||0, hpp:sh.hpp||0, biayaKas:sh.biayaKas||0,
+    kasSeharusnya:sh.kasSeharusnya||0, fisik:sh.totalFisik||0,
+    selisih:sh.selisih||0, setoran:sh.setoran||0, catatan:sh.catatan||""};
+}
+async function kirimKeSheet(daftar){
+  const u=(S.settings.sheetUrl||"").trim();
+  if(!u) throw new Error("URL Google Sheets belum diisi");
+  const r=await fetch(u,{method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({kode:S.settings.sheetKode||"",toko:S.settings.nama||"",kirim:daftar})});
+  const j=await r.json();
+  if(!j.ok) throw new Error(j.pesan||"ditolak server");
+  return j;
+}
+async function kirimAntrian(diam){
+  if(sedangKirim) return false;
+  if(!(S.settings.sheetUrl||"").trim()){ if(!diam)toast("Isi dulu URL Google Sheets-nya.",true); return false; }
+  if(!S.antrian.length){ if(!diam)toast("Tidak ada catatan yang menunggu dikirim."); return true; }
+  sedangKirim=true;
+  try{
+    const j=await kirimKeSheet(S.antrian.slice(0,200));
+    const sudah=new Set(j.diterima||[]);
+    const sebelum=S.antrian.length;
+    S.antrian=S.antrian.filter(x=>!sudah.has(x.id));
+    persist();
+    if(!diam)toast((sebelum-S.antrian.length)+" catatan masuk ke Google Sheets.");
+    return true;
+  }catch(e){
+    if(!diam)toast("Gagal kirim: "+e.message,true);
+    return false;
+  }finally{
+    sedangKirim=false;
+    if(tabAktif==="pengaturan")renderPengaturan();
+  }
 }
 
 /* ============================ navigasi ============================ */
@@ -647,6 +709,7 @@ function simpanTransaksi(){
   S.sales.push(sale);
   items.forEach(i=>{const p=S.produk.find(x=>x.id===i.pid);if(p)p.stok=Math.round((p.stok-i.qty)*1000)/1000});
   persist();
+  antre(rekamNota(sale));
   keranjang=[];diskonNota=0;bayarTunai=0;
   document.body.classList.remove("cart-open");
   renderHeader();renderKasir();
@@ -1192,7 +1255,9 @@ function tutupKasir(){
     setoran,kasDibawa:Math.max(0,totFisik-setoran),
     omzet:h.omzet,tunai:h.tunai,transfer:h.transfer,qris:h.qris,hpp:h.hpp,
     biayaKas:h.bKas,biayaNonKas:h.bNon,nTrx:h.nTrx});
-  persist();fisik={};
+  persist();
+  antre(rekamTutup(sh));
+  fisik={};
   renderHeader();renderTutup();
   modalLaporanShift(sh.id);
 }
@@ -1429,6 +1494,26 @@ function renderPengaturan(){
           </div>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-h"><h2>Kirim ke Google Sheets</h2><div class="spacer"></div>
+          ${S.antrian.length?`<span class="badge b-warn">${num(S.antrian.length)} menunggu</span>`
+            :(S.settings.sheetUrl?`<span class="badge b-ok">semua terkirim</span>`:"")}</div>
+        <div class="card-b">
+          <div class="note" style="margin-bottom:14px">Tiap nota, pengeluaran, dan tutup kasir ikut tercatat ke Google Sheet
+            supaya omzetnya bisa dipantau dari HP pemilik. Panduan pasangnya ada di berkas
+            <b>kirim-ke-sheets.gs</b>.</div>
+          <div class="field"><label class="lbl" for="s-sheeturl">URL Web App Apps Script</label>
+            <input class="inp" id="s-sheeturl" value="${esc(S.settings.sheetUrl||"")}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+          <div class="field"><label class="lbl" for="s-sheetkode">Kode rahasia</label>
+            <input class="inp" id="s-sheetkode" value="${esc(S.settings.sheetKode||"")}" placeholder="sama persis dengan KODE_RAHASIA di skrip"></div>
+          <div class="row">
+            <button class="btn" data-act="sheet-uji">Uji Koneksi</button>
+            <button class="btn btn-p" data-act="sheet-kirim">Kirim Sekarang</button>
+          </div>
+          <div class="tiny muted" style="margin-top:10px">Catatan yang gagal terkirim disimpan dulu dan dicoba lagi sendiri,
+            jadi transaksi tidak pernah hilang walau WiFi mati di tengah jualan.</div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-h"><h2>Mulai Bersih</h2></div>
         <div class="card-b">
@@ -1614,6 +1699,7 @@ document.addEventListener("click",e=>{
       const src=$("#f-src").value;
       S.expenses.push({id:uid(),ts:Date.now(),kategori:$("#f-kat").value,ket:$("#f-ket").value.trim(),
         nominal:n,sumber:src,kasir:S.settings.kasir,shiftId:src==="kas"?pastiShift().id:(shiftAktif()?shiftAktif().id:null)});
+      antre(rekamBiaya(S.expenses[S.expenses.length-1]));
       persist();tutupModal();renderHeader();renderPengeluaran();toast("Pengeluaran "+rp(n)+" dicatat.");break;}
     case"exp-del":{
       if(confirm("Hapus catatan pengeluaran ini?")){S.expenses=S.expenses.filter(x=>x.id!==id);persist();renderPengeluaran();toast("Catatan dihapus.")}
@@ -1664,7 +1750,23 @@ document.addEventListener("click",e=>{
       Object.assign(S.settings,{nama:$("#s-nama").value.trim()||"Kasir Sembako",alamat:$("#s-alamat").value.trim(),
         telp:$("#s-telp").value.trim(),kasir:$("#s-kasir").value.trim()||"Kasir",
         kertas:$("#s-kertas").value,footer:$("#s-footer").value.trim()});
+      if($("#s-sheeturl")){
+        S.settings.sheetUrl=$("#s-sheeturl").value.trim();
+        S.settings.sheetKode=$("#s-sheetkode").value.trim();
+      }
       persist();renderHeader();toast("Pengaturan disimpan.");break;}
+    case"sheet-uji":{
+      S.settings.sheetUrl=$("#s-sheeturl").value.trim();
+      S.settings.sheetKode=$("#s-sheetkode").value.trim();
+      persist();
+      kirimKeSheet([]).then(()=>toast("Tersambung. URL dan kode rahasianya cocok."))
+        .catch(e=>toast("Gagal: "+e.message,true));
+      break;}
+    case"sheet-kirim":{
+      S.settings.sheetUrl=$("#s-sheeturl").value.trim();
+      S.settings.sheetKode=$("#s-sheetkode").value.trim();
+      persist();kirimAntrian(false);
+      break;}
     case"backup":modalBackup();break;
     case"download-backup":unduh("cadangan-kasir-"+today()+".json",backupJSON(),"application/json");break;
     case"download-csv":unduh(t.dataset.nama||"data.csv","﻿"+$("#csvBox").value,"text/csv;charset=utf-8");break;
@@ -1715,9 +1817,10 @@ if("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !diArt
   navigator.serviceWorker.register("sw.js").catch(()=>{});
 }
 S=load();
-S.mutasi=S.mutasi||[];S.counter=S.counter||{};S.meta=S.meta||{demo:false};
+S.mutasi=S.mutasi||[];S.counter=S.counter||{};S.meta=S.meta||{demo:false};S.antrian=S.antrian||[];
 renderHeader();
 goTab("kasir");
+kirimAntrian(true);
 </script>
 </body>
 </html>
