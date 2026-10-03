@@ -150,42 +150,63 @@ function idTersimpan_(lembar, jumlahKolom) {
   return ada;
 }
 
+/**
+ * Spreadsheet berlokal Indonesia (dan banyak lokal Eropa) memakai titik-koma
+ * sebagai pemisah argumen rumus; lokal Inggris memakai koma. Menebak dari nama
+ * lokal gampang meleset, jadi dicoba langsung: tulis =SUM(1,1) lalu lihat
+ * hasilnya 2 atau error.
+ */
+function pemisah_(buku) {
+  var lembar = buku.getSheetByName('__cek__');
+  if (!lembar) lembar = buku.insertSheet('__cek__');
+  var sel = lembar.getRange('A1');
+  sel.setFormula('=SUM(1,1)');
+  SpreadsheetApp.flush();
+  var komaJalan = sel.getValue() === 2;
+  buku.deleteSheet(lembar);
+  return komaJalan ? ',' : ';';
+}
+
 /** Lembar Ringkasan: yang dibuka pemilik toko dari HP. */
 function perbaruiRingkasan_(buku) {
   var r = buku.getSheetByName('Ringkasan');
   if (r) return;                       // sudah ada, rumusnya hidup sendiri
   r = buku.insertSheet('Ringkasan', 0);
 
-  var P = "Penjualan", B = "Pengeluaran";
-  var hariIni = 'Penjualan!A:A,">="&TODAY(),Penjualan!A:A,"<"&TODAY()+1';
-  var biayaHariIni = 'Pengeluaran!A:A,">="&TODAY(),Pengeluaran!A:A,"<"&TODAY()+1';
+  var K = pemisah_(buku);              // pemisah argumen sesuai lokal
+  var hariIni = 'Penjualan!A:A{K}">="&TODAY(){K}Penjualan!A:A{K}"<"&TODAY()+1';
+  var biayaHariIni = 'Pengeluaran!A:A{K}">="&TODAY(){K}Pengeluaran!A:A{K}"<"&TODAY()+1';
 
   var isi = [
     ['RINGKASAN KASIR', ''],
     ['Diperbarui otomatis tiap ada transaksi masuk', ''],
     ['', ''],
     ['HARI INI', ''],
-    ['Omzet', '=IFERROR(SUMIFS(Penjualan!F:F,' + hariIni + '),0)'],
-    ['Jumlah nota', '=IFERROR(COUNTIFS(' + hariIni + '),0)'],
-    ['Laba kotor', '=IFERROR(SUMIFS(Penjualan!H:H,' + hariIni + '),0)'],
-    ['Pengeluaran', '=IFERROR(SUMIFS(Pengeluaran!F:F,' + biayaHariIni + '),0)'],
+    ['Omzet', '=IFERROR(SUMIFS(Penjualan!F:F{K}' + hariIni + '){K}0)'],
+    ['Jumlah nota', '=IFERROR(COUNTIFS(' + hariIni + '){K}0)'],
+    ['Laba kotor', '=IFERROR(SUMIFS(Penjualan!H:H{K}' + hariIni + '){K}0)'],
+    ['Pengeluaran', '=IFERROR(SUMIFS(Pengeluaran!F:F{K}' + biayaHariIni + '){K}0)'],
     ['Laba bersih', '=B7-B8'],
     ['', ''],
     ['7 HARI TERAKHIR', ''],
-    ['Omzet', '=IFERROR(SUMIFS(Penjualan!F:F,Penjualan!A:A,">="&TODAY()-6),0)'],
-    ['Laba kotor', '=IFERROR(SUMIFS(Penjualan!H:H,Penjualan!A:A,">="&TODAY()-6),0)'],
-    ['Pengeluaran', '=IFERROR(SUMIFS(Pengeluaran!F:F,Pengeluaran!A:A,">="&TODAY()-6),0)'],
+    ['Omzet', '=IFERROR(SUMIFS(Penjualan!F:F{K}Penjualan!A:A{K}">="&TODAY()-6){K}0)'],
+    ['Laba kotor', '=IFERROR(SUMIFS(Penjualan!H:H{K}Penjualan!A:A{K}">="&TODAY()-6){K}0)'],
+    ['Pengeluaran', '=IFERROR(SUMIFS(Pengeluaran!F:F{K}Pengeluaran!A:A{K}">="&TODAY()-6){K}0)'],
     ['Laba bersih', '=B13-B14'],
     ['', ''],
     ['SEPANJANG WAKTU', ''],
-    ['Omzet', '=IFERROR(SUM(Penjualan!F:F),0)'],
-    ['Laba kotor', '=IFERROR(SUM(Penjualan!H:H),0)'],
-    ['Pengeluaran', '=IFERROR(SUM(Pengeluaran!F:F),0)'],
+    ['Omzet', '=IFERROR(SUM(Penjualan!F:F){K}0)'],
+    ['Laba kotor', '=IFERROR(SUM(Penjualan!H:H){K}0)'],
+    ['Pengeluaran', '=IFERROR(SUM(Pengeluaran!F:F){K}0)'],
     ['Laba bersih', '=B19-B20'],
     ['', ''],
     ['OMZET PER HARI (14 hari)', ''],
     ['Tanggal', 'Omzet']
-  ];
+  ].map(function (baris) {
+    return baris.map(function (sel) {
+      return typeof sel === 'string' ? sel.split('{K}').join(K) : sel;
+    });
+  });
   r.getRange(1, 1, isi.length, 2).setValues(isi);
 
   /* Tabel omzet harian 14 hari ke belakang. */
@@ -194,8 +215,8 @@ function perbaruiRingkasan_(buku) {
     var b = mulai + i;
     r.getRange(b, 1).setFormula('=TODAY()-' + (13 - i));
     r.getRange(b, 2).setFormula(
-      '=IFERROR(SUMIFS(Penjualan!F:F,Penjualan!A:A,">="&A' + b +
-      ',Penjualan!A:A,"<"&A' + b + '+1),0)');
+      ('=IFERROR(SUMIFS(Penjualan!F:F{K}Penjualan!A:A{K}">="&A' + b +
+       '{K}Penjualan!A:A{K}"<"&A' + b + '+1){K}0)').split('{K}').join(K));
   }
 
   r.getRange('A1').setFontSize(14).setFontWeight('bold');
