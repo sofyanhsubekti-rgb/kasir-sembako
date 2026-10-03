@@ -110,8 +110,114 @@ function doPost(e) {
   }
 }
 
-function doGet() {
-  return jawab_({ ok: true, pesan: 'Penerima Kasir Sembako aktif.' });
+/**
+ * Dipakai dasbor pemilik toko untuk membaca rekap.
+ *   ?kode=<rahasia>&hari=30
+ * Hanya membaca; tidak pernah mengubah apa pun.
+ */
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.kode !== KODE_RAHASIA) {
+    return jawab_({ ok: false, pesan: 'kode rahasia salah' });
+  }
+  try {
+    var hari = parseInt(p.hari, 10);
+    return jawab_(dataDasbor_(hari > 0 && hari <= 180 ? hari : 30));
+  } catch (err) {
+    return jawab_({ ok: false, pesan: String(err) });
+  }
+}
+
+function dataDasbor_(jumlahHari) {
+  var buku = SpreadsheetApp.openById(ID_SHEET);
+  var tz = Session.getScriptTimeZone();
+  var hari = function (v) {
+    return v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : String(v || '');
+  };
+  var sekarang = new Date();
+  var kunciHariIni = Utilities.formatDate(sekarang, tz, 'yyyy-MM-dd');
+
+  /* Daftar tanggal dari paling lama ke hari ini, supaya grafik tetap punya
+     batang kosong pada hari yang tidak ada transaksi. */
+  var urutan = [], petaHarian = {};
+  for (var i = jumlahHari - 1; i >= 0; i--) {
+    var d = new Date(sekarang.getTime() - i * 86400000);
+    var k = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+    urutan.push(k);
+    petaHarian[k] = { tgl: k, omzet: 0, biaya: 0, nota: 0, laba: 0 };
+  }
+  var batas7 = urutan.slice(-7);
+  var dalam7 = {};
+  batas7.forEach(function (k) { dalam7[k] = true; });
+
+  var baca = function (nama) {
+    var l = buku.getSheetByName(nama);
+    if (!l || l.getLastRow() < 2) return [];
+    return l.getRange(2, 1, l.getLastRow() - 1, l.getLastColumn()).getValues();
+  };
+  var kosong = function () { return { omzet: 0, nota: 0, laba: 0, biaya: 0 }; };
+  var ini = kosong(), t7 = kosong(), t30 = kosong();
+  var metode = {}, kategori = {}, notaTerakhir = [];
+
+  baca('Penjualan').forEach(function (r) {
+    var k = hari(r[0]);
+    var total = Number(r[5]) || 0, laba = Number(r[7]) || 0;
+    if (petaHarian[k]) {
+      petaHarian[k].omzet += total;
+      petaHarian[k].laba += laba;
+      petaHarian[k].nota += 1;
+      t30.omzet += total; t30.laba += laba; t30.nota += 1;
+      var m = String(r[4] || 'Lainnya');
+      metode[m] = (metode[m] || 0) + total;
+    }
+    if (dalam7[k]) { t7.omzet += total; t7.laba += laba; t7.nota += 1; }
+    if (k === kunciHariIni) { ini.omzet += total; ini.laba += laba; ini.nota += 1; }
+    notaTerakhir.push({
+      tgl: k, jam: String(r[1] || ''), no: String(r[2] || ''),
+      metode: String(r[4] || ''), total: total, laba: laba,
+      rincian: String(r[9] || '')
+    });
+  });
+
+  baca('Pengeluaran').forEach(function (r) {
+    var k = hari(r[0]);
+    var nominal = Number(r[5]) || 0;
+    if (petaHarian[k]) {
+      petaHarian[k].biaya += nominal;
+      t30.biaya += nominal;
+      var kat = String(r[2] || 'Lain-lain');
+      kategori[kat] = (kategori[kat] || 0) + nominal;
+    }
+    if (dalam7[k]) t7.biaya += nominal;
+    if (k === kunciHariIni) ini.biaya += nominal;
+  });
+
+  var tutup = baca('Tutup Kasir').map(function (r) {
+    return {
+      tgl: hari(r[0]), shift: String(r[1] || ''), kasir: String(r[2] || ''),
+      omzet: Number(r[7]) || 0, kasSeharusnya: Number(r[10]) || 0,
+      fisik: Number(r[11]) || 0, selisih: Number(r[12]) || 0,
+      catatan: String(r[14] || '')
+    };
+  });
+
+  notaTerakhir.sort(function (a, b) {
+    return (b.tgl + b.jam).localeCompare(a.tgl + a.jam);
+  });
+  tutup.reverse();
+
+  return {
+    ok: true,
+    diperbarui: Utilities.formatDate(sekarang, tz, 'yyyy-MM-dd HH:mm'),
+    hariIni: ini, hari7: t7, hari30: t30,
+    harian: urutan.map(function (k) { return petaHarian[k]; }),
+    metode: metode,
+    kategori: Object.keys(kategori).map(function (n) {
+      return { nama: n, nominal: kategori[n] };
+    }).sort(function (a, b) { return b.nominal - a.nominal; }),
+    nota: notaTerakhir.slice(0, 25),
+    tutup: tutup.slice(0, 10)
+  };
 }
 
 function jawab_(obj) {

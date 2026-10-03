@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dasbor Toko</title>
+<meta name="theme-color" content="#0F6B47">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest-dasbor.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F4F8F5; --surface:#FFFFFF; --surface-2:#EBF2ED; --surface-3:#DCE8DF;
+  --ink:#10201A; --ink-2:#3A4C42; --muted:#6B7D72;
+  --line:#DBE7DE; --line-2:#BECCC3;
+  --accent:#0F6B47; --accent-soft:#E1F1E8; --accent-ink:#0A5034;
+  --good:#17824F; --good-soft:#DFF1E7;
+  --bad:#B3342B;  --bad-soft:#FBE8E6;
+  --warn:#8C5A0E; --warn-soft:#FAEEDC;
+  --s1:#12854F; --s2:#8A4FBF;
+  --shadow:0 1px 2px rgba(12,38,25,.06), 0 6px 16px rgba(12,38,25,.05);
+  --r:12px; --r-sm:8px;
+  --sans:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2{margin:0;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--surface);border-bottom:1px solid var(--line)}
+.head{max-width:900px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:12px}
+.mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.head-t{flex:1;min-width:0}
+.head-t h1{font-size:15.5px}
+.head-t span{display:block;font-size:11.5px;color:var(--muted)}
+main{max-width:900px;margin:0 auto;padding-left:16px;padding-right:16px;padding-block:16px 40px}
+
+.btn{appearance:none;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);
+  padding:8px 13px;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{background:var(--surface-2)}
+.btn-p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-p:hover{background:#0B5538}
+.btn-sm{padding:6px 10px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{padding:12px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-h h2{font-size:14px}
+.card-b{padding:15px}
+.spacer{flex:1}
+.lbl{display:block;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.muted{color:var(--muted)}
+.tiny{font-size:11.5px}
+
+/* sorotan hari ini */
+.hero{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.hero .lbl{margin-bottom:2px}
+.hero .besar{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:-.035em;line-height:1.15;display:block}
+.hero .sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+.hero-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;margin-top:14px}
+.hero-grid>div{background:var(--surface);padding:9px 11px}
+.hero-grid b{display:block;font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:-.02em}
+@media(max-width:420px){.hero .besar{font-size:29px}}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow)}
+.tile b{display:block;font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:-.03em;line-height:1.25}
+.tile .sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.good{color:var(--good)} .bad{color:var(--bad)}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+.legend span{font-size:12px;font-weight:600;color:var(--ink-2)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:var(--r-sm);box-shadow:0 8px 24px rgba(12,38,25,.16);padding:8px 10px;font-size:12px;opacity:0;
+  transition:opacity .12s;z-index:5;min-width:150px}
+.tip b{display:block;margin-bottom:4px}
+.tip .tr{display:flex;justify-content:space-between;gap:14px;font-family:var(--mono);font-size:11.5px}
+
+.bar-row{display:grid;grid-template-columns:minmax(72px,auto) 1fr auto;gap:10px;align-items:center;padding:7px 0}
+.bar-row+.bar-row{border-top:1px solid var(--line)}
+.bar-row .nm{font-size:13px;font-weight:600}
+.bar-track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--accent)}
+.bar-row .vl{font-family:var(--mono);font-size:13px;font-weight:600;white-space:nowrap}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+.tbl{overflow-x:auto}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+.r{text-align:right}
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2.5px 7px;border-radius:99px;white-space:nowrap}
+.b-ok{background:var(--good-soft);color:var(--good)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.b-neutral{background:var(--surface-2);color:var(--ink-2)}
+
+.kosong{text-align:center;color:var(--muted);padding:30px 16px;font-size:13.5px}
+.note{display:flex;gap:10px;padding:11px 13px;border-radius:var(--r-sm);background:var(--accent-soft);color:var(--accent-ink);font-size:13px;line-height:1.45}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.field{margin-bottom:12px}
+.inp{width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:10px 12px;font-size:14.5px}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.memuat{display:inline-block;width:13px;height:13px;border:2px solid var(--line-2);border-top-color:var(--accent);
+  border-radius:50%;animation:putar .7s linear infinite}
+@keyframes putar{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header><div class="head">
+  <div class="mark">KS</div>
+  <div class="head-t">
+    <h1>Dasbor Toko</h1>
+    <span id="kabar">Memuat…</span>
+  </div>
+  <button class="btn btn-sm" id="btnSetel" title="Pengaturan">Setel</button>
+  <button class="btn btn-sm btn-p" id="btnMuat">Segarkan</button>
+</div></header>
+
+<main id="isi"></main>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const KUNCI = "dasbor-kasir-v1";
+const nf = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 });
+const rp = n => "Rp " + nf.format(Math.round(n || 0));
+const num = n => nf.format(Math.round(n || 0));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const BLN = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const HARI = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+function dTgl(k) { const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); }
+function tglPendek(k) { const d = dTgl(k); return d.getDate() + " " + BLN[d.getMonth()]; }
+function ringkas(n) {
+  n = Math.round(n || 0);
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1).replace(".", ",") + " jt";
+  if (Math.abs(n) >= 1000) return Math.round(n/1000) + " rb";
+  return String(n);
+}
+
+let setelan = { url: "", kode: "" };
+try { Object.assign(setelan, JSON.parse(localStorage.getItem(KUNCI) || "{}")); } catch (e) {}
+function simpanSetelan() {
+  try { localStorage.setItem(KUNCI, JSON.stringify(setelan)); } catch (e) {}
+}
+
+/* ---------------- tampilan setelan ---------------- */
+function layarSetel(pesan) {
+  $("#kabar").textContent = "Belum tersambung";
+  $("#isi").innerHTML = `
+    <div class="card"><div class="card-h"><h2>Sambungkan ke Google Sheet</h2></div>
+      <div class="card-b">
+        ${pesan ? `<div class="note bad" style="margin-bottom:14px">${esc(pesan)}</div>` : ""}
+        <div class="note" style="margin-bottom:14px">Isi dengan URL dan kode rahasia yang sama seperti
+          di aplikasi kasir, bagian <b>Pengaturan &rsaquo; Kirim ke Google Sheets</b>.</div>
+        <div class="field"><label class="lbl" for="f-url">URL Web App Apps Script</label>
+          <input class="inp" id="f-url" value="${esc(setelan.url)}" placeholder="https://script.google.com/macros/s/.../exec"></div>
+        <div class="field"><label class="lbl" for="f-kode">Kode rahasia</label>
+          <input class="inp" id="f-kode" value="${esc(setelan.kode)}" placeholder="kode rahasia"></div>
+        <button class="btn btn-p" id="f-simpan">Sambungkan</button>
+      </div></div>`;
+  $("#f-simpan").addEventListener("click", () => {
+    setelan.url = $("#f-url").value.trim();
+    setelan.kode = $("#f-kode").value.trim();
+    if (!setelan.url) return;
+    simpanSetelan();
+    muat();
+  });
+}
+
+/* ---------------- ambil data ---------------- */
+let sedang = false;
+async function muat() {
+  if (!setelan.url) return layarSetel();
+  if (sedang) return;
+  sedang = true;
+  $("#btnMuat").disabled = true;
+  $("#kabar").innerHTML = '<span class="memuat"></span> memuat…';
+  try {
+    const u = setelan.url + (setelan.url.includes("?") ? "&" : "?") +
+      "kode=" + encodeURIComponent(setelan.kode) + "&hari=30&t=" + Date.now();
+    const r = await fetch(u);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.pesan || "ditolak server");
+    gambar(j);
+    $("#kabar").textContent = "Diperbarui " + j.diperbarui;
+  } catch (e) {
+    const pesan = /kode rahasia/.test(e.message)
+      ? "Kode rahasianya tidak cocok dengan yang di skrip."
+      : "Tidak bisa mengambil data: " + e.message;
+    if (!$("#isi").children.length) layarSetel(pesan);
+    else {
+      $("#kabar").textContent = "Gagal memuat";
+      $("#isi").insertAdjacentHTML("afterbegin",
+        `<div class="note bad" style="margin-bottom:14px">${esc(pesan)}</div>`);
+    }
+  } finally {
+    sedang = false;
+    $("#btnMuat").disabled = false;
+  }
+}
+
+/* ---------------- grafik batang ---------------- */
+function niceMax(v) {
+  if (v <= 0) return 100000;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function atapBulat(x, y, w, h, r) {
+  if (h <= 0) return "";
+  r = Math.min(r, w / 2, h);
+  return `M${x} ${y+h} L${x} ${y+r} Q${x} ${y} ${x+r} ${y} L${x+w-r} ${y} Q${x+w} ${y} ${x+w} ${y+r} L${x+w} ${y+h} Z`;
+}
+function grafik(hari) {
+  const W = 680, H = 230, L = 52, R = 10, T = 16, B = 36;
+  const pw = W - L - R, ph = H - T - B;
+  const max = niceMax(Math.max(...hari.map(d => Math.max(d.omzet, d.biaya)), 1));
+  const band = pw / hari.length;
+  const bw = Math.min(16, band / 3.2), gap = 2.5;
+  const y = v => T + ph - (v / max) * ph;
+  const puncak = hari.reduce((b, d, i) => d.omzet > hari[b].omzet ? i : b, 0);
+  let g = "";
+  [0, max / 2, max].forEach(t => {
+    const yy = y(t);
+    g += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+    g += `<text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="10" font-family="var(--mono)" fill="var(--muted)">${ringkas(t)}</text>`;
+  });
+  hari.forEach((d, i) => {
+    const cx = L + band * i + band / 2;
+    const x1 = cx - bw - gap / 2, x2 = cx + gap / 2;
+    const h1 = d.omzet > 0 ? Math.max(2, ph * (d.omzet / max)) : 0;
+    const h2 = d.biaya > 0 ? Math.max(2, ph * (d.biaya / max)) : 0;
+    g += `<g data-i="${i}"><rect x="${L+band*i}" y="${T}" width="${band}" height="${ph}" fill="transparent"/>`;
+    if (h1) g += `<path d="${atapBulat(x1, y(d.omzet), bw, h1, 3.5)}" fill="var(--s1)"/>`;
+    if (h2) g += `<path d="${atapBulat(x2, y(d.biaya), bw, h2, 3.5)}" fill="var(--s2)"/>`;
+    g += `</g>`;
+    if (i % 3 === 0 || i === hari.length - 1) {
+      const dd = dTgl(d.tgl);
+      g += `<text x="${cx}" y="${H-20}" text-anchor="middle" font-size="9.5" font-weight="600" fill="var(--ink-2)">${HARI[dd.getDay()]}</text>`;
+      g += `<text x="${cx}" y="${H-7}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${dd.getDate()}/${dd.getMonth()+1}</text>`;
+    }
+    if (i === puncak && d.omzet > 0)
+      g += `<text x="${x1+bw/2}" y="${y(d.omzet)-6}" text-anchor="middle" font-size="10" font-weight="700" font-family="var(--mono)" fill="var(--ink)">${ringkas(d.omzet)}</text>`;
+  });
+  g += `<line x1="${L}" y1="${T+ph}" x2="${W-R}" y2="${T+ph}" stroke="var(--line-2)" stroke-width="1"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Grafik omzet dan pengeluaran 30 hari terakhir">${g}</svg>`;
+}
+
+/* ---------------- susun halaman ---------------- */
+function gambar(j) {
+  const ini = j.hariIni, t7 = j.hari7, t30 = j.hari30;
+  const bersih = s => s.laba - s.biaya;
+  const totalMetode = Object.values(j.metode).reduce((a, b) => a + b, 0) || 1;
+  const maxKat = Math.max(...j.kategori.map(k => k.nominal), 1);
+
+  $("#isi").innerHTML = `
+  <div class="hero">
+    <span class="lbl">Omzet hari ini</span>
+    <b class="besar">${rp(ini.omzet)}</b>
+    <div class="sub">${num(ini.nota)} nota${ini.nota ? " · rata-rata " + rp(ini.omzet / ini.nota) + "/nota" : ""}</div>
+    <div class="hero-grid">
+      <div><span class="lbl">Laba kotor</span><b class="good">${rp(ini.laba)}</b></div>
+      <div><span class="lbl">Pengeluaran</span><b class="bad">${rp(ini.biaya)}</b></div>
+      <div><span class="lbl">Laba bersih</span><b class="${bersih(ini) >= 0 ? "good" : "bad"}">${rp(bersih(ini))}</b></div>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><span class="lbl">Omzet 7 hari</span><b>${rp(t7.omzet)}</b>
+      <div class="sub">${num(t7.nota)} nota · laba bersih ${rp(bersih(t7))}</div></div>
+    <div class="tile"><span class="lbl">Omzet 30 hari</span><b>${rp(t30.omzet)}</b>
+      <div class="sub">${num(t30.nota)} nota · laba bersih ${rp(bersih(t30))}</div></div>
+    <div class="tile"><span class="lbl">Rata-rata per hari</span><b>${rp(t30.omzet / 30)}</b>
+      <div class="sub">dihitung dari 30 hari terakhir</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Omzet &amp; Pengeluaran 30 Hari</h2></div>
+    <div class="card-b">
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i>Omzet</span>
+        <span><i style="background:var(--s2)"></i>Pengeluaran</span>
+      </div>
+      <div class="chart" id="chart">${grafik(j.harian)}<div class="tip" id="tip"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Cara Bayar</h2><span class="tiny muted">30 hari</span></div>
+    <div class="card-b">${Object.keys(j.metode).length ? Object.entries(j.metode)
+      .sort((a, b) => b[1] - a[1]).map(([n, v]) => `
+      <div class="bar-row">
+        <span class="nm">${esc(n)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${(v/totalMetode*100).toFixed(1)}%"></span></span>
+        <span class="vl">${rp(v)}<span class="tiny muted"> ${Math.round(v/totalMetode*100)}%</span></span>
+      </div>`).join("") : `<div class="kosong">Belum ada penjualan.</div>`}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Pengeluaran per Pos</h2><span class="tiny muted">30 hari</span></div>
+    <div class="card-b">${j.kategori.length ? j.kategori.slice(0, 6).map(k => `
+      <div class="bar-row">
+        <span class="nm">${esc(k.nama)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${(k.nominal/maxKat*100).toFixed(1)}%;background:var(--s2)"></span></span>
+        <span class="vl">${rp(k.nominal)}</span>
+      </div>`).join("") : `<div class="kosong">Belum ada pengeluaran tercatat.</div>`}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Tutup Kasir Terakhir</h2></div>
+    <div class="tbl">${j.tutup.length ? `<table>
+      <thead><tr><th>Tanggal</th><th class="r">Omzet</th><th class="r">Fisik</th><th class="r">Selisih</th></tr></thead>
+      <tbody>${j.tutup.map(t => {
+        const s = t.selisih || 0;
+        const b = s === 0 ? '<span class="badge b-ok">pas</span>'
+          : s > 0 ? '<span class="badge b-warn">+' + num(s) + '</span>'
+          : '<span class="badge b-bad">−' + num(-s) + '</span>';
+        return `<tr>
+          <td>${tglPendek(t.tgl)}<div class="tiny muted">${esc(t.kasir)}</div></td>
+          <td class="r num">${num(t.omzet)}</td>
+          <td class="r num">${num(t.fisik)}</td>
+          <td class="r">${b}${t.catatan ? `<div class="tiny muted">${esc(t.catatan)}</div>` : ""}</td>
+        </tr>`; }).join("")}</tbody></table>`
+      : `<div class="kosong">Belum ada tutup kasir.</div>`}</div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>Transaksi Terakhir</h2><span class="tiny muted">${j.nota.length} nota</span></div>
+    <div class="tbl">${j.nota.length ? `<table>
+      <thead><tr><th>Waktu</th><th>Barang</th><th>Bayar</th><th class="r">Total</th></tr></thead>
+      <tbody>${j.nota.map(n => `<tr>
+        <td style="white-space:nowrap">${tglPendek(n.tgl)}<div class="tiny muted">${esc(n.jam)}</div></td>
+        <td class="tiny">${esc((n.rincian || "—").slice(0, 46))}${(n.rincian || "").length > 46 ? "…" : ""}</td>
+        <td><span class="badge ${/tunai/i.test(n.metode) ? "b-ok" : "b-neutral"}">${esc(n.metode)}</span></td>
+        <td class="r num" style="font-weight:600">${num(n.total)}
+          <div class="tiny muted">laba ${num(n.laba)}</div></td>
+      </tr>`).join("")}</tbody></table>`
+      : `<div class="kosong">Belum ada transaksi.</div>`}</div>
+  </div>`;
+
+  pasangTip(j.harian);
+}
+
+function pasangTip(hari) {
+  const wrap = $("#chart"), tip = $("#tip");
+  if (!wrap) return;
+  const svg = wrap.querySelector("svg");
+  const tampil = e => {
+    const g = e.target.closest("g[data-i]");
+    if (!g) { tip.style.opacity = 0; return; }
+    const d = hari[+g.dataset.i];
+    const dd = dTgl(d.tgl);
+    tip.innerHTML = `<b>${HARI[dd.getDay()]}, ${tglPendek(d.tgl)}</b>
+      <div class="tr"><span>Omzet</span><span>${num(d.omzet)}</span></div>
+      <div class="tr"><span>Keluar</span><span>${num(d.biaya)}</span></div>
+      <div class="tr"><span>Nota</span><span>${num(d.nota)}</span></div>
+      <div class="tr" style="border-top:1px solid var(--line);margin-top:3px;padding-top:3px">
+        <span>Laba bersih</span><span>${num(d.laba - d.biaya)}</span></div>`;
+    const r = wrap.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(r.width - 165, Math.max(0, x - 75)) + "px";
+    tip.style.top = Math.max(0, y - 110) + "px";
+  };
+  svg.addEventListener("mousemove", tampil);
+  svg.addEventListener("touchstart", tampil, { passive: true });
+  svg.addEventListener("touchmove", tampil, { passive: true });
+  svg.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+  svg.addEventListener("touchend", () => { setTimeout(() => { tip.style.opacity = 0; }, 1800); });
+}
+
+/* ---------------- mulai ---------------- */
+$("#btnMuat").addEventListener("click", muat);
+$("#btnSetel").addEventListener("click", () => layarSetel());
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && setelan.url) muat();
+});
+if (setelan.url) muat(); else layarSetel();
+</script>
+</body>
+</html>
