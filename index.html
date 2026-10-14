@@ -467,6 +467,9 @@ function renderHeader(){
 
 /* ============================ KASIR ============================ */
 let keranjang=[], katPilih="Semua", cari="", metode="tunai", bayarTunai=0, diskonNota=0;
+/* Pembulatan manual: kasir mengetik total akhir. Hanya berlaku selama total
+   sebelum pembulatan masih sama — isi keranjang berubah, pembulatan batal. */
+let bulatJadi=0, bulatDari=0;
 
 function panelKas(){
   const sh=shiftAktif();
@@ -556,7 +559,10 @@ function kartuProduk(p){
 }
 const subtotalItem=i=>i.tetap!=null?i.tetap:i.harga*i.qty;
 const subtotalNota=()=>keranjang.reduce((a,i)=>a+subtotalItem(i),0);
-const totalNota=()=>Math.max(0,subtotalNota()-diskonNota);
+const totalAsli=()=>Math.max(0,subtotalNota()-diskonNota);
+const selisihBulat=()=>bulatJadi&&bulatDari===totalAsli()?bulatJadi-bulatDari:0;
+const totalNota=()=>totalAsli()+selisihBulat();
+const teksBulat=()=>{const d=selisihBulat();return d?"Pembulatan "+(d>0?"+ ":"− ")+rp(Math.abs(d)):""};
 
 function panelKeranjang(){
   const sub=subtotalNota(), tot=totalNota();
@@ -573,6 +579,9 @@ function panelKeranjang(){
       <div class="sumrow"><span class="muted">Subtotal</span><b>${rp(sub)}</b></div>
       <div class="sumrow"><span class="muted">Diskon nota</span>
         <input class="inp money" id="diskonNota" data-money style="width:120px;padding:4px 8px;font-size:13px" value="${diskonNota?num(diskonNota):""}" placeholder="0"></div>
+      <div class="sumrow"><span class="muted">Dibulatkan jadi</span>
+        <input class="inp money" id="bulatNota" data-money inputmode="numeric" style="width:120px;padding:4px 8px;font-size:13px" value="${selisihBulat()?num(bulatJadi):""}" placeholder="${num(totalAsli())}" aria-label="Total setelah dibulatkan"></div>
+      <div class="tiny muted" id="bulatInfo" style="text-align:right" ${selisihBulat()?"":"hidden"}>${teksBulat()}</div>
       <div class="total"><span>Total bayar</span><b>${rp(tot)}</b></div>
       <div class="metode">${Object.entries(METODE).map(([k,v])=>`<button data-act="metode" data-v="${k}" aria-pressed="${metode===k}">${v}</button>`).join("")}</div>
       ${metode==="tunai"?`
@@ -707,7 +716,7 @@ function simpanTransaksi(){
   S.counter[k]=(S.counter[k]||0)+1;
   const no="TRX-"+k.replace(/-/g,"")+"-"+pad(S.counter[k]);
   const items=keranjang.map(i=>({...i}));
-  const sale={id:uid(),no,ts:Date.now(),items,sub:subtotalNota(),diskon:diskonNota,total:tot,
+  const sale={id:uid(),no,ts:Date.now(),items,sub:subtotalNota(),diskon:diskonNota,bulat:selisihBulat(),total:tot,
     hpp:items.reduce((a,i)=>a+i.beli*i.qty,0),metode,
     bayar:metode==="tunai"?bayarTunai:tot,kembali:metode==="tunai"?bayarTunai-tot:0,
     kasir:S.settings.kasir,shiftId:sh.id};
@@ -715,7 +724,7 @@ function simpanTransaksi(){
   items.forEach(i=>{const p=S.produk.find(x=>x.id===i.pid);if(p)p.stok=Math.round((p.stok-i.qty)*1000)/1000});
   persist();
   antre(rekamNota(sale));
-  keranjang=[];diskonNota=0;bayarTunai=0;
+  keranjang=[];diskonNota=0;bayarTunai=0;bulatJadi=0;
   document.body.classList.remove("cart-open");
   renderHeader();renderKasir();
   modalStruk(sale);
@@ -743,6 +752,7 @@ function strukText(s){
   L.push(garis());
   L.push(kiKa("Subtotal",num(s.sub)));
   if(s.diskon)L.push(kiKa("Diskon","-"+num(s.diskon)));
+  if(s.bulat)L.push(kiKa("Pembulatan",(s.bulat>0?"+":"-")+num(Math.abs(s.bulat))));
   L.push(kiKa("TOTAL",num(s.total)));
   L.push(kiKa(METODE[s.metode]||s.metode,num(s.bayar)));
   if(s.metode==="tunai")L.push(kiKa("Kembali",num(Math.max(0,s.kembali||0))));
@@ -1652,7 +1662,7 @@ document.addEventListener("click",e=>{
     case"inc":keranjang[i].qty=Math.round((keranjang[i].qty+1)*1000)/1000;refreshCart();break;
     case"dec":keranjang[i].qty=Math.round((keranjang[i].qty-1)*1000)/1000;if(keranjang[i].qty<=0)keranjang.splice(i,1);refreshCart();break;
     case"rm":keranjang.splice(i,1);refreshCart();break;
-    case"clear-cart":keranjang=[];diskonNota=0;bayarTunai=0;refreshCart();break;
+    case"clear-cart":keranjang=[];diskonNota=0;bayarTunai=0;bulatJadi=0;refreshCart();break;
     case"harga":{
       const it=keranjang[i];
       modal({judul:"Ubah Harga · "+it.nama,
@@ -1811,7 +1821,13 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("input",e=>{
   const t=e.target;
-  if(t.id==="diskonNota"){diskonNota=toNum(t.value);const tt=$(".total b");if(tt)tt.textContent=rp(totalNota());
+  if(t.id==="diskonNota"||t.id==="bulatNota"){
+    if(t.id==="diskonNota")diskonNota=toNum(t.value);
+    else{const v=toNum(t.value);bulatJadi=v>0?v:0;bulatDari=totalAsli()}
+    const bn=$("#bulatNota");
+    if(bn){if(t.id==="diskonNota"&&!selisihBulat())bn.value="";bn.placeholder=num(totalAsli())}
+    const bi=$("#bulatInfo");if(bi){bi.textContent=teksBulat();bi.hidden=!selisihBulat()}
+    const tt=$(".total b");if(tt)tt.textContent=rp(totalNota());
     const k=$(".kembali");if(k&&metode==="tunai"){const s=bayarTunai-totalNota();k.classList.toggle("neg",s<0);k.querySelector("span").textContent=s<0?"Kurang":"Kembalian";k.querySelector("b").textContent=rp(Math.abs(s))}}
   if(t.dataset.act==="fisik"){updateFisik(t)}
   if(t.id==="bayar"){bayarTunai=toNum(t.value);const k=$(".kembali");if(k){const s=bayarTunai-totalNota();k.classList.toggle("neg",s<0);k.querySelector("span").textContent=s<0?"Kurang":"Kembalian";k.querySelector("b").textContent=rp(Math.abs(s))}}
