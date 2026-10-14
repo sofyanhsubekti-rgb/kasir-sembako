@@ -1001,7 +1001,7 @@ function simpanProduk(id){
     stok:toQty($("#f-stok").value),min:toQty($("#f-min").value),curah:$("#f-curah").checked};
   if(id){Object.assign(S.produk.find(p=>p.id===id),data)}
   else S.produk.push({id:uid(),...data});
-  persist();tutupModal();renderProduk();toast(id?"Barang diperbarui.":"Barang ditambahkan.");
+  persist();tutupModal();RENDER[tabAktif]();toast(id?"Barang diperbarui.":"Barang ditambahkan.");
 }
 function modalStokMasuk(id){
   const p=S.produk.find(x=>x.id===id);if(!p)return;
